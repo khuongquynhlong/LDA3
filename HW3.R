@@ -41,8 +41,6 @@ df_org <- read_sas("hearing500lr.sas7bdat")
 df_org %<>% mutate(timeround = round(TIME))
 
 
-
-
 df_org %<>% group_by(id, side, timeround) %>% 
     summarise(y = mean(y),
               age = mean(age)) %>% ungroup() %>%
@@ -70,12 +68,24 @@ df
 # 25116 - 4407 = 20709
 sapply(df, function(x){sum(is.na(x))})
 
+
+df %<>% group_by(id, side) %>%
+    mutate(ylag = lag(y, 1)) %>% ungroup()
+
 # saveRDS(df, "hearing_timeround.RDS")
+write.csv(df, "hearing_timeround.csv", row.names = F, na = "")
+
+# df %>% select(id, side, timeround, y, ylag) %>% View()
+
+
+
 
 df_wide <- pivot_wider(df %>% select(-ycat), names_from = timeround, values_from = y) 
 names(df_wide) <- c("id", "side", "age", paste0("t", 0:22))
 
 # saveRDS(df_wide, "hearing_timeround_wide.RDS")
+# write.csv(df_wide, "hearing_timeround_wide.csv")
+
 
 sapply(df_wide, function(x){sum(is.na(x))})
 
