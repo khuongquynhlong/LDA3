@@ -73,7 +73,7 @@ df %<>% group_by(id, side) %>%
     mutate(ylag = lag(y, 1)) %>% ungroup()
 
 # saveRDS(df, "hearing_timeround.RDS")
-write.csv(df, "hearing_timeround.csv", row.names = F, na = "")
+# write.csv(df, "hearing_timeround.csv", row.names = F, na = "")
 
 # df %>% select(id, side, timeround, y, ylag) %>% View()
 
@@ -226,5 +226,39 @@ gridExtra::grid.arrange(md_l, md_r, ncol = 2)
 library(naniar)
 mcar_test(df_wide_l[, 4:26])
 mcar_test(df_wide_r[, 4:26])
+
+
+
+
+#---------- Q3
+#===============================================================================
+# Psi model
+df
+
+psi_mod <- glm()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

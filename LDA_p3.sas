@@ -29,8 +29,7 @@ proc print data=hearing_long(obs=20);
 run;
 
 
-/* Dropout marcro*/
-
+/* Dropout marcro*/;
 
 %macro dropout(data=,id=,time=,response=,out=);
 %if %bquote(&data)= %then %let data=&syslast;
@@ -85,9 +84,23 @@ run;
 %mend;
 
 
-%macro dropout(data=hearing_long,id=id,time=timeround,response=y,out=hearing_miss);
+%dropout(data=hearing_long,id=id,time=timeround,response=y,out=hearing_miss);
 
 
 proc print data=hearing_miss(obs=20);
 run;
+
+
+/*Psi model*/ 
+proc genmod data=hearing_miss DESCENDING;
+	model dropout = ylag age side2 / dist=binomial;
+run;
+
+
+
+/*Q4*/ 
+/*=============================================================================;
+
+
+
 
