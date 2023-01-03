@@ -230,29 +230,23 @@ mcar_test(df_wide_r[, 4:26])
 
 
 
-#---------- Q3
+#---------- Q4
 #===============================================================================
-# Psi model
-df
+# Reshape data
+df_wide_im <- read_sas("hearing_wide_im.sas7bdat")
 
-psi_mod <- glm()
+df_wide_im %<>% gather(-c("_Imputation_", "id", "side", "age", "side2"), 
+                       key = "time", value = "y")
 
-
-
-
-
+df_wide_im %<>% mutate(time = parse_number(time))
 
 
+glimpse(df_wide_im)
 
 
+table(df_wide_im$time)
 
-
-
-
-
-
-
-
+# write.csv(df_wide_im, "df_long_im.csv", row.names = F, na = "")
 
 
 
