@@ -99,8 +99,31 @@ run;
 
 
 /*Q4*/ 
-/*=============================================================================;
+/*=============================================================================*/
+
+proc import datafile = "&path\hearing_timeround_wide.csv" out=hearing_wide
+		dbms=csv replace;
+		guessingrows=max;
+	getnames=yes;
+run;
 
 
+proc sort data=hearing_long;
+	by id side timeround;
+run;
+
+
+data hearing_long;
+	set hearing_long;
+	if side = "Left" then side2 = 0; 
+	else side2 = 1;
+	sideclss = side2;
+	timeclss = timeround;
+	time2 = timeround**2;
+run;
+
+
+proc print data=hearing_long(obs=20);
+run;
 
 
