@@ -21,81 +21,13 @@ data hearing_long;
 	else side2 = 1;
 	sideclss = side2;
 	timeclss = timeround;
+	time = timeround;
 	time2 = timeround**2;
 run;
 
 
 proc print data=hearing_long(obs=20);
 run;
-
-
-/* Dropout marcro*/;
-
-%macro dropout(data=,id=,time=,response=,out=);
-%if %bquote(&data)= %then %let data=&syslast;
-proc freq data=&data noprint;
-tables &id /out=freqid;
-tables &time / out=freqtime;
-run;
-proc iml;
-reset noprint;
-use freqid;
-read all var {&id};
-nsub = nrow(&id);
-use freqtime;
-read all var {&time};
-ntime = nrow(&time);
-time = &time;
-use &data; 
-read all var {&id &time &response};
-n = nrow(&response);
-dropout = j(n,1,0);
-ind = 1;
-do while (ind <= nsub);
-  j=1;
-  if (&response[(ind-1)*ntime+j]=.) then print "First Measurement is Missing";
-  if (&response[(ind-1)*ntime+j]^=.) then
-    do;
-      j = ntime;
-      do until (j=1);
-        if (&response[(ind-1)*ntime+j]=.) then 
-          do;
-            dropout[(ind-1)*ntime+j]=1;
-            j = j-1;
-          end;
-          else j = 1;
-      end; 
-    end;
-  ind = ind+1;
-end;
-prev = j(n,1,1);
-prev[2:n] = &response[1:n-1];
-i=1;
-do while (i<=n);
-  if &time[i]=time[1] then prev[i]=.;
-  i = i+1;
-end;
-create help var {&id &time &response dropout prev};
-append;
-quit;
-data &out;
-merge &data help;
-run;
-%mend;
-
-
-%dropout(data=hearing_long,id=id,time=timeround,response=y,out=hearing_miss);
-
-
-proc print data=hearing_miss(obs=20);
-run;
-
-
-/*Psi model*/ 
-proc genmod data=hearing_miss DESCENDING;
-	model dropout = ylag age side2 / dist=binomial;
-run;
-
 
 
 /*Multiple Imputation*/ 
@@ -114,9 +46,9 @@ data hearing_long_im;
 	sideclss = side2;
 	timeclss = time;
 	time2 = time**2;
-	if y <=15 then ycat2 = 1;
-	else if y <= 25 then ycat2 = 2;
-	else ycat2 = 3;
+	if y <=15 then ycat = 1;
+	else if y <= 25 then ycat = 2;
+	else ycat = 3;
 run;
 
 proc sort data=hearing_long_im;
@@ -124,33 +56,54 @@ proc sort data=hearing_long_im;
 run;
 
 
-proc print data=hearing_long_im;
+proc print data=hearing_long_im(obs=100);
 run;
 
-/*Q5*/ 
+/*Q4*/ 
 /*=============================================================================*/
-/*GEE*/
+/*GLMM*/
+/*GLMM Direct likelihood*/
 
-proc gee data=hearing_long_im;
-	class timeclss id sideclss;
-	by _imputation_;
-	model y = age side2 time age*time age*time2 / noint;
-	repeated subject=id / withinsubject=sideclss*timeclss type=exch modelse ecorrb ecovb;
-	ods output GEEEmpPEst=gmparms ParmInfo=gmpinfo CovB=gmcovb;
+proc glimmix data=hearing_long method=quad(qpoints=10 qcheck);
+	class id timeclss ycat sideclss;
+	model ycat = time age side2 time*age time2*age/ 
+	dist =  multinomial link=cumlogit solution;
+	random intercept /subject=id;
+	random intercept time /subject=sideclss(id) type=chol;
 run;
 
 
-proc print data=gmparms;
+
+proc nlmixed data=hearing_long qpoints=5 maxiter=100 technique=newrap;
+	parms int1=9.2100 int2=12.1362 beta1=0.2445 beta2=-0.1037 
+			beta3=-0.1756 beta4=-0.00557 beta5=-0.00006
+			sigmab1 = 2.6149 sigmab2 = 1.1680 sigmab3 = 0.1303 rho = 0.002596;
+	eta = beta1*time + beta2*age + beta3*side2 + 
+		  beta4*time*age + beta5*time2*age + b1 + b2 + b3*time;
+	if ycat=1 then z = 1/(1+exp(-(int1+eta)));
+	else if ycat=2 then z = 1/(1+exp(-(int2+eta))) - 1/(1+exp(-(int1+eta)));
+	else z = 1 - 1/(1+exp(-(int2+eta)));
+	if z > 1e-8 then ll = log(z);
+	else ll = -1e100;
+	model ycat ~ general(ll);
+	random b1 ~ normal(0,sigmab1**2) subject=id; 
+	random b2 b3 ~ normal([0, 0], 
+					[sigmab2**2, rho*sigmab2*sigmab3, sigmab3**2]) 
+	subject = side2(id);
+	estimate 'sigmab1^2' sigmab1**2;
+	estimate 'sigmab2^2' sigmab2**2;
+	estimate 'sigmab3^2' sigmab3**2;
+	estimate 'Cov23' rho*sigmab2*sigmab3;
 run;
 
-proc print data=gmparms;
-run;
 
 
-data gmpinfo;
-	set gmpinfo;
-	if parameter=’Prm1’ then delete;
-run;
+
+
+
+
+
+
 
 
 
