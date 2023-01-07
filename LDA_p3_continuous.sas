@@ -87,7 +87,7 @@ run;
 %dropout(data=hearing_long,id=id,time=timeround,response=y,out=hearing_miss);
 
 
-proc print data=hearing_miss(obs=20);
+proc print data=hearing_miss(obs=200);
 run;
 
 
