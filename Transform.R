@@ -28,4 +28,3 @@ df_gmpinfo <- read_sas("gmpinfo.sas7bdat") %>%
 write.csv(df_gmcovb, "gmcovb.csv", row.names = F)
 write.csv(df_gmparms, "gmparms.csv", row.names = F)
 write.csv(df_gmpinfo, "gmpinfo.csv", row.names = F)
-

@@ -1,4 +1,5 @@
 %let path F:\Dropbox\Long\1. Master of Statistics\0. Program\3. Semester 3\6. Longditudial Data Analysis\5. Data and code\LDA3;
+%let path C:\Users\khuon\Dropbox\Long\1. Master of Statistics\0. Program\3. Semester 3\6. Longditudial Data Analysis\5. Data and code\LDA3;
 
 libname lda "&path";
 
@@ -228,8 +229,8 @@ run;
 
 proc mixed data=hearing_long method=REML;
 	class id timeclss sideclss;
-	model y = age side2 timeround timeround*side2 timeround*age time2*age/ covb s;
-	repeated timeclss / type = cs subject=id r rcorr;
+	model y = age side2 timeround timeround*side2 timeround*age / covb s;
+	repeated timeclss / type = sp(exp)(time) local subject=id r rcorr;
 	random intercept / subject=id g s;
 	random intercept timeround / type=un subject=sideclss(id) g s vcorr;
 run;
@@ -261,8 +262,8 @@ run;
 proc mixed data=hearing_long_im method=REML;
 	class id timeclss sideclss;
 	by _Imputation_;
-	model y = age side2 time time*side2 time*age time2*age/ covb s;
-	repeated timeclss / type = cs subject=id;
+	model y = age side2 time time*side2 time*age/ covb s;
+	repeated timeclss / type = sp(exp)(time) local subject=id;
 	random intercept /  subject=id;
 	random intercept time / type=un subject=sideclss(id);
 	ods output solutionF = nlparms CovB=nlcovb;	
@@ -270,7 +271,7 @@ run;
 
 
 proc mianalyze parms=nlparms covb(effectvar=rowcol)=nlcovb wcov bcov tcov;
-	modeleffects intercept age side2 time time*side2 time*age time2*age;
+	modeleffects intercept age side2 time time*side2 time*age;
 run;
 
 
@@ -514,3 +515,118 @@ proc mianalyze parms=gmparms parminfo=gmpinfo covb=gmcovb wcov bcov tcov;
 	modeleffects prm6 prm7 time age side2 time*side2 time*age;
 run;
 
+
+/*Q6: Sensitivity analysis*/ 
+/*==================================================================*/
+proc print data=hearing_wide(obs=100);
+run;
+
+/*Convert to Monotone missingness*/
+proc mi data=hearing_wide seed=2023 simple nimpute=10 round=0.1 out=sen_wide_mono;
+	mcmc impute = monotone;
+	var side2 age t0 t2 t4 t6 t8 t10 t12 t14 t16 t18 t20 t22;
+run;
+
+
+proc print data=sen_wide_mono(obs=100);
+run;
+
+
+/*------------------ CCMV*/
+proc mi data=sen_wide_mono seed=2023 simple out=sen_wide_ccnv nimpute=1;
+	var side2 age t0 t2 t4 t6 t8 t10 t12 t14 t16 t18 t20 t22;
+	monotone reg;
+	mnar model (t0 t2 t4 t6 t8 t10 t12 t14 t16 t18 t20 t22 / modelobs=ccmv);
+run;
+
+proc print data=sen_wide_ccnv(obs=2000); run;
+
+proc sort data=sen_wide_ccnv;
+	by _imputation_ id side;
+run;
+
+/*Long transform*/
+proc transpose data=sen_wide_ccnv out=sen_long_ccnv;
+	by _imputation_ id side age side2;
+run;
+
+data sen_long_ccnv;
+	set sen_long_ccnv; 
+	time1=compress(_NAME_,'t');
+	time=input(time1, 8.);
+	y = col1;
+	drop time1;
+	drop col1;
+	drop _NAME_;
+	sideclss = side2;
+	timeclss = time;
+	time2 = time**2;
+	if y <=15 then ycat = 1;
+	else if y <= 25 then ycat = 2;
+	else ycat = 3;
+run;
+
+
+proc mixed data=sen_long_ccnv method=REML;
+	class id timeclss sideclss;
+	by _Imputation_;
+	model y = age side2 time time*side2 time*age/ covb s;
+	repeated timeclss / type = sp(exp)(time) local subject=id;
+	random intercept /  subject=id;
+	random intercept time / type=un subject=sideclss(id);
+	ods output solutionF = nlparms CovB=nlcovb;	
+run;
+
+proc mianalyze parms=nlparms covb(effectvar=rowcol)=nlcovb;
+	modeleffects intercept age side2 time time*side2 time*age;
+run;
+
+
+/*------------------ NCMV*/
+proc mi data=sen_wide_mono seed=2023 simple out=sen_wide_ncnv nimpute=1;
+	var side2 age t0 t2 t4 t6 t8 t10 t12 t14 t16 t18 t20 t22;
+	monotone reg;
+	mnar model (t0 t2 t4 t6 t8 t10 t12 t14 t16 t18 t20 t22 / modelobs=ncmv);
+run;
+
+proc print data=sen_wide_ncnv(obs=2000); run;
+
+proc sort data=sen_wide_ncnv;
+	by _imputation_ id side;
+run;
+
+/*Long transform*/
+proc transpose data=sen_wide_ncnv out=sen_long_ncnv;
+	by _imputation_ id side age side2;
+run;
+
+data sen_long_ncnv;
+	set sen_long_ncnv; 
+	time1=compress(_NAME_,'t');
+	time=input(time1, 8.);
+	y = col1;
+	drop time1;
+	drop col1;
+	drop _NAME_;
+	sideclss = side2;
+	timeclss = time;
+	time2 = time**2;
+	if y <=15 then ycat = 1;
+	else if y <= 25 then ycat = 2;
+	else ycat = 3;
+run;
+
+
+proc mixed data=sen_long_ncnv method=REML;
+	class id timeclss sideclss;
+	by _Imputation_;
+	model y = age side2 time time*side2 time*age/ covb s;
+	repeated timeclss / type = sp(exp)(time) local subject=id;
+	random intercept /  subject=id;
+	random intercept time / type=un subject=sideclss(id);
+	ods output solutionF = nlparms CovB=nlcovb;	
+run;
+
+proc mianalyze parms=nlparms covb(effectvar=rowcol)=nlcovb;
+	modeleffects intercept age side2 time time*side2 time*age;
+run;
