@@ -251,11 +251,34 @@ table(df_wide_im$time)
 sapply(df_wide_im, function(x){sum(is.na(x))})
 
 
+#---------- Q5
+#===============================================================================
+# Reshape data
+df_wide_im2 <- read_sas("hearing_wide_mono.sas7bdat")
+
+
+missing_plot(df_wide_im2[, 5:16], title = "Right ear") +
+    theme(plot.title = element_text(size = 16,color = "grey10",  face = "bold", hjust = 0.5))
+
+
+df_wide_im2 %<>% gather(-c("_Imputation_", "id", "side", "age", "side2"), 
+                       key = "time", value = "y")
+
+df_wide_im2 %<>% mutate(time = parse_number(time))
+
+
+glimpse(df_wide_im2)
+
+
+table(df_wide_im2$time)
+
+# write.csv(df_wide_im2, "df_long_im_mono.csv", row.names = F, na = "")
+
+sapply(df_wide_im2, function(x){sum(is.na(x))})
 
 
 
-
-
+table(df_wide_im2)
 
 
 
